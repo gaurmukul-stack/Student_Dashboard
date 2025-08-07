@@ -343,44 +343,56 @@ with tab4:
 elif choice == "📚 Study Hub":
     st.title("📚 Study Hub")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 Notes", "📚 Books", "🎥 Videos", "➕ Add Resource"])
+    # Only the Notes tab
+    tab1 = st.tabs(["📝 Notes"])[0]  # Get first (and only) tab
     
     with tab1:
         st.subheader("Course Notes")
+        
+        # Load notes data with error handling
         try:
             notes = load_data("notes")
         except:
             notes = {}
             st.warning("Could not load notes data. Initializing empty notes collection.")
         
-        search_term = st.text_input("🔍 Search Notes", "")
-        sort_option = st.selectbox("Sort By", ["Subject A-Z", "Recent First", "Course Code"])
+        # Search and sort controls
+        col1, col2 = st.columns(2)
+        with col1:
+            search_term = st.text_input("🔍 Search Notes", "")
+        with col2:
+            sort_option = st.selectbox("Sort By", ["Subject A-Z", "Recent First", "Course Code"])
         
-        # Display notes in responsive grid
-        cols = st.columns(2)
-        notes_to_display = []
+        # Filter and sort notes
+        notes_to_display = [
+            (subject, note_data) 
+            for subject, note_data in notes.items() 
+            if search_term.lower() in subject.lower()
+        ]
         
-        for subject, note_data in notes.items():
-            if search_term.lower() in subject.lower():
-                notes_to_display.append((subject, note_data))
-        
-        # Sorting logic
         if sort_option == "Recent First":
             notes_to_display.sort(key=lambda x: x[1].get('date', ''), reverse=True)
         elif sort_option == "Course Code":
             notes_to_display.sort(key=lambda x: x[1].get('code', ''))
         else:  # Default A-Z
             notes_to_display.sort(key=lambda x: x[0])
-        
-        # Display notes
+
+        # Display notes in 2-column grid
+        cols = st.columns(2)
         for i, (subject, note_data) in enumerate(notes_to_display):
-            color = get_subject_color(subject)
             with cols[i % 2]:
                 with st.container(border=True):
-                    st.markdown(f"<h4 style='color: {color}'>{subject}</h4>", unsafe_allow_html=True)
+                    # Note header with colored subject
+                    st.markdown(f"<h4 style='color: {get_subject_color(subject)}'>{subject}</h4>", 
+                               unsafe_allow_html=True)
+                    
+                    # Metadata
                     st.caption(f"📅 {note_data.get('date', 'No date')} | 🏷️ {note_data.get('tags', '')}")
+                    
+                    # Description
                     st.write(note_data.get('description', 'Study notes available'))
                     
+                    # Download button if link exists
                     if "link" in note_data:
                         st.download_button(
                             label="Download PDF",
@@ -391,47 +403,11 @@ elif choice == "📚 Study Hub":
                     else:
                         st.warning("No file attached")
                     
-                    if st.button("Delete", key=f"del_note_{subject}"):
+                    # Delete button
+                    if st.button("Delete Note", key=f"del_note_{subject}"):
                         del notes[subject]
                         save_data("notes", notes)
                         st.rerun()
-    
-    with tab2:
-        st.subheader("Recommended Books")
-        # Similar structure for books tab
-        # ...
-    
-    with tab3:
-        st.subheader("Educational Videos")
-        # Similar structure for videos tab
-        # ...
-    
-    with tab4:
-        st.subheader("Add New Resource")
-        with st.form("add_resource"):
-            resource_type = st.selectbox("Resource Type", ["Notes", "Book", "Video"])
-            name = st.text_input("Resource Name")
-            description = st.text_area("Description")
-            link = st.text_input("URL/Link")
-            date = st.date_input("Date", datetime.now())
-            
-            if st.form_submit_button("Add Resource"):
-                new_resource = {
-                    "name": name,
-                    "description": description,
-                    "link": link,
-                    "date": date.strftime("%Y-%m-%d"),
-                    "type": resource_type
-                }
-                
-                # Save based on type
-                if resource_type == "Notes":
-                    notes[name] = new_resource
-                    save_data("notes", notes)
-                # Similar for other types
-                
-                st.success("Resource added successfully!")
-                st.balloons()
 # Performance Tracker
 elif choice == "📊 Performance":
     st.title("📊 Academic Performance")
