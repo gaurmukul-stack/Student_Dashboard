@@ -270,59 +270,75 @@ elif choice == "📅 Academic Planner":
                     st.success("Event added successfully!")
                     st.balloons()
     
-    with tab4:
+with tab4:
     st.subheader("Academic Progress Tracker")
     
-    # ... [previous code remains the same until visualization]
+    # Course management
+    st.write("### Course Management")
+    courses = load_data("courses")
     
-    st.write("### Progress Overview")
-    progress_data = pd.DataFrame({
-        'Component': ['Assignments', 'Midterm', 'Final'],
-        'Score': [assignments, midterm, final],
-        'Target': [90, 80, 80]
-    })
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        selected_course = st.selectbox("Select Course", [c['name'] for c in courses] + ["Add New Course"])
+    with col2:
+        if selected_course == "Add New Course":
+            with st.popover("➕ New Course"):
+                with st.form("add_course"):
+                    course_name = st.text_input("Course Name")
+                    course_code = st.text_input("Course Code")
+                    credit_hours = st.number_input("Credit Hours", min_value=1, max_value=5, value=3)
+                    if st.form_submit_button("Add"):
+                        courses.append({
+                            'name': course_name,
+                            'code': course_code,
+                            'credits': credit_hours
+                        })
+                        st.rerun()
     
-    # Visualization with fallback
-    try:
-        fig = px.bar(progress_data, x='Component', y=['Score', 'Target'], 
-                    barmode='group', title="Performance vs Targets")
-        st.plotly_chart(fig, use_container_width=True)
-    except NameError:  # If plotly not available
-        st.bar_chart(progress_data.set_index('Component'))
-        st.write("*Install plotly for enhanced visualizations*")
-    with tab5:
-        st.subheader("Planner Settings")
-        
-        st.write("### Notification Preferences")
-        notify_email = st.checkbox("Email reminders", value=True)
-        notify_push = st.checkbox("Push notifications", value=True)
-        notify_advance = st.slider("Days in advance to notify", 1, 7, 3)
-        
-        st.write("### Calendar Integration")
-        st.button("Connect Google Calendar")
-        st.button("Connect Outlook Calendar")
-        
-        st.write("### Export/Import Data")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="Export Events",
-                data=json.dumps(st.session_state.events),
-                file_name="academic_events.json",
-                mime="application/json"
-            )
-        with col2:
-            uploaded_file = st.file_uploader("Import Events", type=["json"])
-            if uploaded_file:
-                imported_events = json.load(uploaded_file)
-                st.session_state.events.extend(imported_events)
-                st.success(f"Successfully imported {len(imported_events)} events!")
-        
-        st.write("### Danger Zone")
-        if st.button("Clear All Events", type="primary"):
-            if st.checkbox("I'm sure I want to delete all events"):
-                st.session_state.events = []
-                st.rerun()
+    if selected_course and selected_course != "Add New Course":
+        course = next((c for c in courses if c['name'] == selected_course), None)
+        if course:
+            st.write(f"**Course Code:** {course['code']} | **Credits:** {course['credits']}")
+            
+            # Grade tracker
+            st.write("### Grade Calculator")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                assignments = st.number_input("Assignments Score", min_value=0, max_value=100, value=85)
+            with col2:
+                midterm = st.number_input("Midterm Score", min_value=0, max_value=100, value=75)
+            with col3:
+                final = st.number_input("Final Exam Score", min_value=0, max_value=100, value=80)
+            
+            weights = {
+                'assignments': 0.4,
+                'midterm': 0.3,
+                'final': 0.3
+            }
+            
+            total_score = (assignments * weights['assignments'] + 
+                         midterm * weights['midterm'] + 
+                         final * weights['final'])
+            
+            st.metric("Overall Grade", f"{total_score:.1f}%", 
+                     help="Weights: Assignments 40%, Midterm 30%, Final 30%")
+            
+            # Progress visualization
+            st.write("### Progress Overview")
+            progress_data = pd.DataFrame({
+                'Component': ['Assignments', 'Midterm', 'Final'],
+                'Score': [assignments, midterm, final],
+                'Target': [90, 80, 80]
+            })
+            
+            # Visualization with fallback
+            try:
+                fig = px.bar(progress_data, x='Component', y=['Score', 'Target'], 
+                            barmode='group', title="Performance vs Targets")
+                st.plotly_chart(fig, use_container_width=True)
+            except NameError:  # If plotly not available
+                st.bar_chart(progress_data.set_index('Component'))
+                st.write("*Install plotly for enhanced visualizations*")
 # Study Hub
 elif choice == "📚 Study Hub":
     st.title("📚 Study Hub")
